@@ -14,6 +14,8 @@ public class IRTSortMap {
     public static final Hashtable<String, Integer[]> basicSortMap = new Hashtable<>();
     public static final IRTItemDB itemDB = new IRTItemDB();
 
+    public static final IRTItemDB playerInvDB = new IRTItemDB();
+
     public IRTSortMap() {
     }
 
@@ -53,28 +55,45 @@ public class IRTSortMap {
             itemDB.addItem("uncategorized", uncategorizedItem.toString());
         }
 
-        // old map
-        String[] customCategories = {"oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "crimson", "warped"};
+        // set up pre built IRT categories
+        String[] customSortCategoryList = {"oak|dark_oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "crimson", "warped"};
+        String[] customPlayerCategoryList = {"sword", "shovel", "pickaxe", "axe|pickaxe", "hoe", "bow,crossbow"};
+        IRTCustomCategoryList customSortCategories = new IRTCustomCategoryList();
+        IRTCustomCategoryList customPlayerCategories = new IRTCustomCategoryList();
+
+        for (String categorySetting : customSortCategoryList) {
+            String[] settingMain = categorySetting.split("\\|");
+            String[] literalList = settingMain[0].split(",");
+
+            if (literalList.length > 1) { // is a literal category (never make a custom category with only one item plz...)
+                customSortCategories.addCategory(literalList[0], List.of(literalList));
+            }
+            else { // is a semantic category
+                customSortCategories.addCategory(settingMain[0], settingMain[0], settingMain[1].split(","));
+            }
+        }
+
+        for (String categorySetting : customPlayerCategoryList) {
+            String[] settingMain = categorySetting.split("\\|");
+            String[] literalList = settingMain[0].split(",");
+
+            if (literalList.length > 1) { // is a literal category (never make a custom category with only one item plz...)
+                customPlayerCategories.addCategory(literalList[0], List.of(literalList));
+            }
+            else { // is a semantic category
+                customPlayerCategories.addCategory(settingMain[0], settingMain[0], settingMain[1].split(","));
+            }
+        }
+
+        // sort categories (for sorting containers, chests, and general player inventory slots)
         uncategorizedItems = new ArrayList<>();
         int g = 0;
         for (int i = 0; i < itemList.size(); i++) {
             Item item = itemList.get(i);
 
             Integer[] sortCriteria = {0,0};
-            boolean isCustom = false;
-            String customCategory = "";
-
-            for (String cc : customCategories) {
-                if (item.toString().contains(cc.subSequence(0, cc.length()))) {
-                    if (cc.equals("oak") && item.toString().contains("dark_oak".subSequence(0, 8))) {
-                        continue;
-                    }
-
-                    isCustom = true;
-                    customCategory = cc;
-                    break;
-                }
-            }
+            String customCategory = customSortCategories.match(item.toString());
+            boolean isCustom = customCategory != null;
 
             if (item.getGroup() != null || isCustom) {
                 String group = isCustom ? customCategory : item.getGroup().getName();
@@ -100,6 +119,20 @@ public class IRTSortMap {
         for (Item uncategorizedItem : uncategorizedItems) {
             basicSortMap.put(uncategorizedItem.toString(), new Integer[]{g, i});
             i++;
+        }
+
+        // player categories (for working with custom player inventory configurations)
+        for (Item item : itemList) {
+            String customCategory = customPlayerCategories.match(item.toString());
+            boolean isCustom = customCategory != null;
+
+            if (isCustom) {
+                if (!playerInvDB.categoryExists(customCategory)) {
+                    playerInvDB.addCategory(customCategory);
+                }
+
+                playerInvDB.addItem(customCategory, item.toString());
+            }
         }
     }
 }

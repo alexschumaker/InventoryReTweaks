@@ -10,8 +10,8 @@ public class IRTCustomCategoryList {
         categoryList = new ArrayList<>();
     }
 
-    public void addCategory(String categoryName, List<String> itemNames) {
-        categoryList.add(new customCategory(categoryName, itemNames));
+    public void addCategory(String categoryName, List<String> literalItemNames) {
+        categoryList.add(new customCategory(categoryName, literalItemNames));
     }
 
     public void addCategory(String categoryName, String semanticKeyword) {
@@ -22,7 +22,7 @@ public class IRTCustomCategoryList {
         categoryList.add(new customCategory(categoryName, semanticKeyword, semanticRejections));
     }
 
-    public String hasMatch(String itemName) {
+    public String match(String itemName) {
         for (customCategory customCategory : categoryList) {
             if (customCategory.contains(itemName)) {
                 return customCategory.name;
