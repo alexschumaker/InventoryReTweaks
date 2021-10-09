@@ -8,7 +8,7 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Objects;
 
-public class IRTSortMap {
+public class IRTItemData {
     public static final Hashtable<String, Integer> itemMap = new Hashtable<>();
     public static final Hashtable<String, Integer> categoryMap = new Hashtable<>();
     public static final Hashtable<String, Integer[]> basicSortMap = new Hashtable<>();
@@ -16,7 +16,7 @@ public class IRTSortMap {
 
     public static final IRTItemDB playerInvDB = new IRTItemDB();
 
-    public IRTSortMap() {
+    public IRTItemData() {
     }
 
     static {

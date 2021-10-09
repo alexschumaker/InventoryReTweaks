@@ -1,33 +1,22 @@
 package net.cobblers.irt;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
-import net.fabricmc.fabric.impl.client.screen.ScreenEventFactory;
-import net.fabricmc.fabric.mixin.screen.ScreenAccessor.*;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.item.Item;
-import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
-import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.text.LiteralText;
-import net.minecraft.data.Main;
 import net.minecraft.util.collection.DefaultedList;
-import net.minecraft.util.registry.Registry;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 
@@ -104,9 +93,9 @@ public class InventoryReTweaksClient implements ClientModInitializer {
 //                }
 //                moveSlot++;
 
-                IRTConfig.writeDefaultItemDB(IRTSortMap.itemDB);
-                System.out.println(IRTSortMap.itemDB.categoryExists("uncategorized"));
-                System.out.println(Arrays.toString(IRTSortMap.itemDB.listCategories()));
+                IRTConfig.writeDefaultItemDB(IRTItemData.itemDB);
+                System.out.println(IRTItemData.itemDB.categoryExists("uncategorized"));
+                System.out.println(Arrays.toString(IRTItemData.itemDB.listCategories()));
             }
         });
     }

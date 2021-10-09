@@ -23,14 +23,14 @@ public class IRTSort {
                 continue;
             }
 
-            Integer[] sortPrio = IRTSortMap.basicSortMap.get(item.toString());
+            Integer[] sortPrio = IRTItemData.basicSortMap.get(item.toString());
             System.out.println(Arrays.toString(sortPrio));
             if (sortPrio == null) {
                 System.out.println("Invalid Item: " + item + ". Aborting sort.");
                 return sortedList;
             }
             for (int j = 0; j < sortedList.size(); j++) {
-                Integer[] comparePrio = IRTSortMap.basicSortMap.get(sortedList.get(j).getItem().toString());
+                Integer[] comparePrio = IRTItemData.basicSortMap.get(sortedList.get(j).getItem().toString());
                 if (sortPrio[0] < comparePrio[0]) {
                     sortedList.add(j, container.get(i));
                     sorted = true;
@@ -72,7 +72,7 @@ public class IRTSort {
             }
             else {
                 total++;
-                int category = IRTSortMap.basicSortMap.get(itemStack.getItem().toString())[0];
+                int category = IRTItemData.basicSortMap.get(itemStack.getItem().toString())[0];
 
                 if (categories.containsKey(category)) {
                     categories.get(category).add(itemStack);
