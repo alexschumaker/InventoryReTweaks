@@ -6,21 +6,119 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.minecraft.item.Item;
+import net.minecraft.item.Items;
 
 public class IRTConfig {
     private static final String configPath = "config/irt/";
-    private final IRTItemDB itemDB = IRTItemData.itemDB;
     public static final List<IRTPlayerInventoryModel> playerInventoryModels = new ArrayList<>();
     public static final IRTItemDB customPlayerInventoryCategories = new IRTItemDB();
 
-    public static boolean initConfig() {
+    public static final Hashtable<String, Integer> itemMap = new Hashtable<>();
+    public static final List<String> fullItemList = new ArrayList<>();
+    public static final Hashtable<String, Integer> categoryMap = new Hashtable<>();
+    public static final Hashtable<String, Integer[]> basicSortMap = new Hashtable<>();
+    public static final IRTItemDB itemDB = new IRTItemDB();
+    public static final IRTItemDB customCategories = new IRTItemDB();
+    public static final IRTItemDB playerCategories = new IRTItemDB();
+    protected static Hashtable<String, IRTRuleSet> playerInventoryRuleSets = new Hashtable<>();
+
+    public IRTConfig() {
+    }
+
+    static {
+        List<Item> itemList = new ArrayList<>();
+        for (int i = 0; i < Items.class.getFields().length; i++) {
+            if (Items.class.getFields()[i].getType().equals(Item.class)) {
+                try {
+                    itemList.add((Item) Items.class.getFields()[i].get(null));
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        // default itemDB
+        List<Item> uncategorizedItems = new ArrayList<>();
+        for (Item item : itemList) {
+            fullItemList.add(item.toString());
+            if (item.getGroup() != null) {
+                String group = item.getGroup().getName();
+
+                if (!itemDB.categoryExists(group)) {
+                    itemDB.addCategory(group);
+                }
+
+                itemDB.addItem(group, item.toString());
+            } else {
+                // item has no group
+                uncategorizedItems.add(item);
+            }
+        }
+
+        itemDB.addCategory("uncategorized");
+        for (Item uncategorizedItem : uncategorizedItems) {
+            itemDB.addItem("uncategorized", uncategorizedItem.toString());
+        }
+
+        System.out.println(initConfig() ? "Initializing config." : "Config found.");
+        initCustomCategories();
+
+
+
+
+        // build hashtable where every item is mapped to its default Mojang category
+        uncategorizedItems = new ArrayList<>();
+        int categoryIndex = 0;
+        int itemIndex = 0;
+        for (Item item : itemList) {
+            if (item.getGroup() == null) {
+                uncategorizedItems.add(item);
+                continue;
+            }
+
+            String categoryName = item.getGroup().getName();
+            if (!categoryMap.containsKey(categoryName)) {
+                categoryMap.put(categoryName, categoryIndex);
+                categoryIndex++;
+            }
+
+            basicSortMap.put(item.toString(), new Integer[]{categoryMap.get(categoryName), itemIndex});
+            itemIndex++;
+        }
+
+
+
+
+        // put uncategorized items in the "other" category
+        categoryMap.put("other", categoryIndex);
+        for (Item item : uncategorizedItems) {
+            basicSortMap.put(item.toString(), new Integer[]{categoryIndex, itemIndex});
+            itemIndex++;
+        }
+        categoryIndex++;
+
+        // now overwrite items with custom categories
+        for (String customCategoryName : customCategories.listCategories()) {
+            categoryMap.put(customCategoryName, categoryIndex);
+
+            for (String itemName : customCategories.getCategory(customCategoryName)) {
+                basicSortMap.put(itemName, new Integer[]{categoryIndex, basicSortMap.get(itemName)[1]});
+            }
+            categoryIndex++;
+        }
+
+        initPlayerInventoryModel();
+        playerInventoryRuleSets.forEach((s, irtRuleSet) -> {
+            irtRuleSet.transposeRowItems();
+        });
+    }
+
+    private static boolean initConfig() {
         boolean init = false;
 
         File config = new File(configPath);
@@ -29,99 +127,135 @@ public class IRTConfig {
         }
 
         // compare default to existing from file and replace if changed
-        if (IRTConfig.getDefaultItemDB() == null || !Objects.equals(IRTConfig.getDefaultItemDB().itemMap, IRTItemData.itemDB.itemMap)) {
-            IRTConfig.writeDefaultItemDB(IRTItemData.itemDB);
+        if (IRTConfig.getDefaultItemDB() == null || !Objects.equals(IRTConfig.getDefaultItemDB().itemMap, IRTConfig.itemDB.itemMap)) {
+            IRTConfig.writeDefaultItemDB(IRTConfig.itemDB);
         }
 
-        // create the custom file if it doesn't exist
-        File customConfigFile = new File(configPath + "IRTCustomCategories.cfg");
-        if (!customConfigFile.exists()) {
-            try {
-                if (customConfigFile.createNewFile()) {
-                    System.out.println("Custom DB file created.");
+        // create the custom files if they don't exist
+        for (String fileName : new String[]{"IRTCustomCategories.cfg", "IRTCustomInventory.cfg"}) {
+            File customConfigFile = new File(configPath + fileName);
+            if (!customConfigFile.exists()) {
+                try {
+                    if (customConfigFile.createNewFile()) {
+                        System.out.println("Custom DB file created.");
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
 
         return init;
     }
 
-    public static boolean initPlayerInventoryModel() {
+    private static void initCustomCategories() {
+        // get custom IRT categories from IRTCustomCategories.cfg
         List<String> lines = null;
+
         try {
-            lines = Files.readAllLines(Paths.get(configPath + "IRTPlayerInventory.cfg"));
+            lines = Files.readAllLines(Paths.get(configPath + "IRTCustomCategories.cfg"));
         } catch (IOException e) {
             e.printStackTrace();
-            File customPlayerFile = new File(configPath + "IRTPlayerInventory.cfg");
-            if (!customPlayerFile.exists()) {
-                try {
-                    customPlayerFile.createNewFile();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                    return true;
-                }
-            }
-            return true;
+            System.err.println("Failed to process custom category file.");
+            return;
         }
 
-        // look through each line of the file to set up the custom player inventory config
-        HashMap<String, String> currentRuleSet = null;
-        int i = 0;
+        String processingTag = null;
         for (String s : lines) {
-            i++;
             String line = s.trim();
-            if (line.isEmpty()) {
+
+            if (line.isEmpty() || line.startsWith("#")) {
                 continue;
             }
 
-            if (line.charAt(line.length() - 1) == ':') {
-                if (currentRuleSet != null) {
-                    playerInventoryModels.add(new IRTPlayerInventoryModel(currentRuleSet));
-                }
-
-                currentRuleSet = new HashMap<>();
-            } else if (line.startsWith("###") && line.endsWith("###")) {
-                playerInventoryModels.add(new IRTPlayerInventoryModel(currentRuleSet));
-                createCustomPlayerCategories(i, lines);
-                break;
-            } else if (currentRuleSet != null) {
-                String[] mapping = line.split(":");
-                currentRuleSet.put(mapping[0], mapping[1]);
-            }
-        }
-
-        return false;
-    }
-
-    private static void createCustomPlayerCategories(int startingLine, List<String> lines) {
-        String currentCategory = null;
-        for (int i = startingLine; i < lines.size(); i++) {
-            String line = lines.get(i).trim();
-            if (line.isEmpty()) {continue;}
-
-            if (line.charAt(line.length() - 1) == ':') {
-                currentCategory = line.split(":")[0];
-                customPlayerInventoryCategories.addCategory(currentCategory);
+            if (line.startsWith("@")) {
+                processingTag = line.subSequence(1, line.length()).toString();
                 continue;
             }
 
-            if (currentCategory != null) {
-                String item = line.split(" ")[0];
-                int prio  = Integer.parseInt(line.split(" ")[1]);
+            String[] nameSplit = line.split(":");
+            if (nameSplit.length > 1) {
+                IRTItemDB currentDB = Objects.equals(processingTag, "Custom") ? customCategories : playerCategories;
+                String categoryName = nameSplit[0];
+                currentDB.addCategory(categoryName);
 
-                if (IRTItemData.playerInvDB.categoryExists(item)) {
-                    customPlayerInventoryCategories.addItemsPriority(currentCategory, IRTItemData.playerInvDB.getCategory(item), prio);
-                }
-                else if (IRTItemData.itemDB.categoryExists(item)) {
-                    customPlayerInventoryCategories.addItemsPriority(currentCategory, IRTItemData.itemDB.getCategory(item), prio);
+                String[] semanticSplit = nameSplit[1].split("\\|");
+                String[] literalSplit = nameSplit[1].split(",");
+
+                if (literalSplit.length > 1) {
+                    for (String itemName : literalSplit) {
+                        itemName = itemName.strip();
+                        if (playerCategories.categoryExists(itemName)) {
+                            currentDB.addItems(categoryName, playerCategories.getCategory(itemName));
+                        }
+                        else if (customCategories.categoryExists(itemName)) { // this isn't actually referring to an item, but rather a category that already exists.
+                            currentDB.addItems(categoryName, customCategories.getCategory(itemName));
+                        }
+                        else if (itemDB.categoryExists(itemName)) {
+                            currentDB.addItems(categoryName, itemDB.getCategory(itemName));
+                        }
+                        else {
+                            itemName = itemName.strip();
+                            currentDB.addItem(categoryName, itemName);
+                        }
+
+                    }
                 }
                 else {
-                    customPlayerInventoryCategories.addItemPriority(currentCategory, item, prio);
+                    for (String itemName : IRTConfig.fullItemList) {
+                        if (itemName.contains(semanticSplit[0].strip())) {
+                            if (semanticSplit.length > 1) {
+                                boolean negated = false;
+
+                                for (int i = 1; i < semanticSplit.length; i++) {
+                                    if (negated) break;
+                                    negated = itemName.contains(semanticSplit[i].strip());
+                                }
+
+                                if (negated) continue;
+                            }
+
+                            currentDB.addItem(categoryName, itemName);
+                        }
+                    }
                 }
             }
         }
+    }
+
+    private static void initPlayerInventoryModel() {
+        // get custom IRT categories from IRTCustomCategories.cfg
+        List<String> lines = null;
+
+        try {
+            lines = Files.readAllLines(Paths.get(configPath + "IRTCustomInventory.cfg"));
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Failed to process custom inventory file.");
+            return;
+        }
+
+        String processingRule = null;
+        for (String s : lines) {
+            String line = s.strip();
+
+            if (line.startsWith("#") || line.isEmpty()) {
+                continue;
+            }
+
+            if (line.endsWith(":")) {
+                processingRule = line.substring(0, line.length()-1);
+                playerInventoryRuleSets.put(processingRule, new IRTRuleSet(processingRule));
+            }
+            else {
+                playerInventoryRuleSets.get(processingRule).addRule(line);
+            }
+        }
+
+//        for (var rule : playerInventoryRuleSets.keySet()) {
+//            System.out.println(playerInventoryRuleSets.get(rule).ruleItemsMap);
+//            System.out.println(playerInventoryRuleSets.get(rule).ruleSlotMap);
+//        }
     }
 
     public static IRTItemDB getDefaultItemDB() {
@@ -139,15 +273,6 @@ public class IRTConfig {
             e.printStackTrace();
             return null;
         }
-
-//        try {
-//            String defaultDBJson = Files.readString(Path.of(configPath,"IRTDefaultDB.cfg"));
-//            return new IRTItemDB(gson.fromJson(defaultDBJson, HashMap.class));
-//        }
-//        catch (IOException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
     }
 
     public static void writeDefaultItemDB(IRTItemDB itemDB) {
@@ -158,9 +283,5 @@ public class IRTConfig {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static void initPlayerDB() {
-
     }
 }

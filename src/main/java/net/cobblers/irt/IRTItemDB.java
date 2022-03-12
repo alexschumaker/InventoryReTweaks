@@ -7,8 +7,9 @@ import java.util.Map;
 
 public class IRTItemDB {
     protected Map<String, List<String>> itemMap;
-    private Map<String, Integer[]> itemHashMap = null;
-    private Map<String, Integer> categoryMap = new HashMap<>();
+    protected Map<String, Integer[]> itemHashMap = null;
+    protected Map<String, Integer> categoryMap = new HashMap<>();
+    protected Map<String, String> itemCategoryMap = new HashMap<>();
 
     public IRTItemDB() {
         itemMap = new HashMap<>();
@@ -112,6 +113,18 @@ public class IRTItemDB {
 
             for (int i = 0; i < items.size(); i++) {
                 itemHashMap.put(items.get(i), new Integer[]{g, i});
+            }
+        }
+    }
+
+    public void initItemCategoryMap() {
+        itemCategoryMap = new HashMap<>();
+
+        for (String category : this.listCategories()) {
+            List<String> items = this.getCategory(category);
+
+            for (String item : items) {
+                itemCategoryMap.put(item, category);
             }
         }
     }
