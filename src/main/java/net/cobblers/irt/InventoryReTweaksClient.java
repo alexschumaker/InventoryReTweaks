@@ -36,7 +36,7 @@ public class InventoryReTweaksClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-//        System.out.println(IRTConfig.initConfig() ? "Initializing config." : "Config found.");
+        System.out.println(IRTConfig.initConfig() ? "Initializing config." : "Config found.");
 //        System.out.println(IRTItemData.itemDB.categoryExists("uncategorized"));
 //        System.out.println(Arrays.toString(IRTItemData.itemDB.listCategories()));
 //        System.out.println(Arrays.toString(IRTConfig.basicSortMap.keySet().toArray()));

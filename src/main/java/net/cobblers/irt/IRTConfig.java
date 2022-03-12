@@ -118,7 +118,7 @@ public class IRTConfig {
         });
     }
 
-    private static boolean initConfig() {
+    static boolean initConfig() {
         boolean init = false;
 
         File config = new File(configPath);

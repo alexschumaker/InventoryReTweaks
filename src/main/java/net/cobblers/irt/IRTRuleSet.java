@@ -268,6 +268,7 @@ public class IRTRuleSet {
 
         public List<ItemStack> cycleShift(List<ItemStack> sortedItems) {
             int len = sortedItems.size();
+            if (len == 0) return sortedItems;
             List<ItemStack> shiftedItems = new ArrayList<>(sortedItems);
 
             for (int i = 0; i < len; i++) {
