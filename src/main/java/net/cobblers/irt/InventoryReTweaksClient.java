@@ -2,7 +2,6 @@ package net.cobblers.irt;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
@@ -21,7 +20,6 @@ import net.minecraft.util.collection.DefaultedList;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.Arrays;
 import java.util.Hashtable;
 
 import java.util.ArrayList;
@@ -95,6 +93,10 @@ public class InventoryReTweaksClient implements ClientModInitializer {
 
     private void sortPlayerInventory(ScreenHandler currentScreenHandler, MinecraftClient client) {
         if (client.player == null) {
+            return;
+        }
+
+        if (IRTConfig.playerInventoryRuleSets.size() == 0) {
             return;
         }
 

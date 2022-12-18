@@ -15,10 +15,7 @@ import net.minecraft.item.Items;
 
 public class IRTConfig {
     private static final String configPath = "config/irt/";
-    public static final List<IRTPlayerInventoryModel> playerInventoryModels = new ArrayList<>();
-    public static final IRTItemDB customPlayerInventoryCategories = new IRTItemDB();
 
-    public static final Hashtable<String, Integer> itemMap = new Hashtable<>();
     public static final List<String> fullItemList = new ArrayList<>();
     public static final Hashtable<String, Integer> categoryMap = new Hashtable<>();
     public static final Hashtable<String, Integer[]> basicSortMap = new Hashtable<>();
@@ -113,9 +110,7 @@ public class IRTConfig {
         }
 
         initPlayerInventoryModel();
-        playerInventoryRuleSets.forEach((s, irtRuleSet) -> {
-            irtRuleSet.transposeRowItems();
-        });
+        playerInventoryRuleSets.forEach((s, irtRuleSet) -> irtRuleSet.transposeRowItems());
     }
 
     static boolean initConfig() {
@@ -150,7 +145,7 @@ public class IRTConfig {
 
     private static void initCustomCategories() {
         // get custom IRT categories from IRTCustomCategories.cfg
-        List<String> lines = null;
+        List<String> lines;
 
         try {
             lines = Files.readAllLines(Paths.get(configPath + "IRTCustomCategories.cfg"));
@@ -225,7 +220,7 @@ public class IRTConfig {
 
     private static void initPlayerInventoryModel() {
         // get custom IRT categories from IRTCustomCategories.cfg
-        List<String> lines = null;
+        List<String> lines;
 
         try {
             lines = Files.readAllLines(Paths.get(configPath + "IRTCustomInventory.cfg"));
